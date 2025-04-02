@@ -1,0 +1,227 @@
+1. Producto Dao
+package com.tienda.dao;
+import com.tienda.domain.Producto;
+import org.springframework.data.jpa.repository.JpaRepository;
+import java.util.List;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+public interface ProductoDao extends JpaRepository <Producto, Long>{
+ public List<Producto> findByPrecioBetweenOrderByDescripcion(double
+precioInf, double precioSup);
+}
+2. Producto Service
+package com.tienda.service;
+import com.tienda.domain.Producto;
+import java.util.List;
+public interface ProductoService {
+ public List<Producto> getProductos(boolean activo);
+ // Se obtiene un Producto, a partir del id de un producto
+ public Producto getProducto(Producto producto);
+
+ // Se inserta un nuevo producto si el id del producto esta vacío
+ // Se actualiza un producto si el id del producto NO esta vacío
+ public void save(Producto producto);
+
+ // Se elimina el producto que tiene el id pasado por parámetro
+ public void delete(Producto producto);
+ public List<Producto> findByPrecioBetweenOrderByDescripcion(double
+precioInf, double precioSup);
+}
+3. Producto Service Impl
+package com.tienda.service.Impl;
+import com.tienda.dao.ProductoDao;
+import com.tienda.domain.Producto;
+import com.tienda.service.ProductoService;
+import java.util.List;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+@Service
+public class ProductoServiceImpl implements ProductoService {
+ @Autowired
+ private ProductoDao productoDao;
+ @Override
+ @Transactional(readOnly = true)
+ public List<Producto> getProductos(boolean activos) {
+ var lista = productoDao.findAll();
+ if (activos) {
+ lista.removeIf(e -> !e.isActivo());
+ }
+ return lista;
+ }
+ @Override
+ @Transactional(readOnly = true)
+ public Producto getProducto(Producto producto) {
+ return productoDao.findById(producto.getIdProducto()).orElse(null);
+ }
+ @Override
+ @Transactional
+ public void save(Producto producto) {
+ productoDao.save(producto);
+ }
+ @Override
+ @Transactional
+ public void delete(Producto producto) {
+ productoDao.delete(producto);
+ }
+
+ // Lista de productos con precio entre ordendados por descripción
+ConsultaAmpliada
+ @Override
+ @Transactional(readOnly=true)
+ public List<Producto> findByPrecioBetweenOrderByDescripcion(double
+precioInf, double precioSup) {
+ return productoDao.findByPrecioBetweenOrderByDescripcion(precioInf,
+precioSup);
+}
+}
+4. Pruebas Controller
+package com.tienda.controller;
+import com.tienda.domain.Categoria;
+import com.tienda.service.CategoriaService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import com.tienda.service.ProductoService;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+@Controller
+@RequestMapping("/pruebas") //localhost:pruebas
+public class PruebasController {
+ @Autowired
+ private ProductoService productoService;
+ @Autowired
+ private CategoriaService categoriaService;
+ @GetMapping("/listado")
+ public String listado(Model model) {
+ var productos = productoService.getProductos(false);
+ var categorias = categoriaService.getCategorias(false);
+ model.addAttribute("productos", productos);
+ model.addAttribute("totalProductos", productos.size());
+ model.addAttribute("categorias", categorias);
+ return "/pruebas/listado";
+ }
+ @GetMapping("/listado/{idCategoria}")//localhost/listado/2(monitores)
+ public String listado(Model model, Categoria categoria) {
+ var productos =
+categoriaService.getCategoria(categoria).getProductos();
+ var categorias = categoriaService.getCategorias(false);
+ model.addAttribute("productos", productos);
+ model.addAttribute("totalProductos", productos.size());
+ model.addAttribute("categorias", categorias);
+ return "/pruebas/listado";
+ }
+
+ //Los métodos siguientes son para la prueba de consultas ampliadas
+ @GetMapping("/listado2")
+ public String listado2(Model model) {
+ var productos = productoService.getProductos(false);
+ model.addAttribute("productos", productos);
+ return "/pruebas/listado2";
+ }
+ @PostMapping("/query1")
+ public String consultaQuery1(@RequestParam(value = "precioInf") double
+precioInf,
+ @RequestParam(value = "precioSup") double precioSup, Model model)
+{
+ var productos =
+productoService.findByPrecioBetweenOrderByDescripcion(precioInf,
+precioSup);
+ model.addAttribute("productos", productos);
+ model.addAttribute("precioInf", precioInf);
+ model.addAttribute("precioSup", precioSup);
+ return "/pruebas/listado2";
+ }
+}
+5. Listado2
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+ xmlns:th="http://www.thymeleaf.org">
+ <head th:replace="~{layout/plantilla :: head}">
+ <title>TechShop</title>
+ </head>
+ <body>
+ <header th:replace="~{layout/plantilla :: header}"/>
+ <section th:replace="~{pruebas/fragmentos :: filtros}"/>
+ <section th:replace="~{pruebas/fragmentos :: listadoProductos}"/>
+ <footer th:replace="~{layout/plantilla :: footer}"/>
+ </body>
+</html>
+Fragmentos Pruebas
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+ xmlns:th="http://www.thymeleaf.org">
+ <body>
+ <!-- 1 Sección principal para mostrar la informaccion de las categorias -->
+ <section th:fragment="categoriasTabs" id="categorias">
+ <div class="row py-4">
+ <ul class="nav nav-tabs">
+ <li class="nav-item">
+ <a class="nav-link"
+ aria-current="page"
+ href="/pruebas/listado"
+ >[[#{pruebas.todas}]]</a>
+ </li>
+ <li th:each="categoria : ${categorias}" class="nav-item">
+ <a class="nav-link"
+ th:href="@{/pruebas/listado/}+${categoria.idCategoria}"
+ >[[${categoria.descripcion}]]</a>
+ </li>
+ </ul>
+ </div>
+ <!-- 2 Sección principal para mostrar la informaccion de la entidad producto --
+>
+ <section th:fragment="listadoProductos" id="productos">
+ <div class="row row-cols-4">
+ <div class="card" th:each="p : ${productos}">
+ <figure><img th:src="${p.rutaImagen}"
+ class="card-img-top" alt="..."
+ height="200"/>
+ <figcaption>[[${p.precio}+' ('+${p.existencias}+')']]
+ </figcaption>
+ </figure>
+ <div class="card-header">
+ <h4 class="card-title">[[${p.descripcion}]]</h4>
+ </div>
+ <div class="card-body">
+ <p class="card-text">[[${p.detalle}]]</p>
+ </div>
+ </div>
+ </div>
+ </section>
+ <!-- 3 Sección para crear los filtros -->
+ <section th:fragment="filtros" class="bg-light">
+ <div class="row py-2">
+ <div class="col-md-1"></div>
+ <div class="col-md-3">
+ <form method="POST" th:action="@{/pruebas/query1}"
+ class="was-validated">
+ <div class="card">
+ <div class="card-body">
+ <div class="mb-3">
+ <label for="precioInf">[[#{pruebas.precio.inferior}]]</label>
+ <input type="number" class="form-control"
+ th:value="${precioInf}"
+ th:name="precioInf" required="true"/>
+ </div>
+ <div class="mb-3">
+ <label for="precioSup">[[#{pruebas.precio.superior}]]</label>
+ <input type="number" class="form-control"
+ th:value="${precioSup}"
+ th:name="precioSup" required="true"/>
+ </div>
+ </div>
+ <div class="card-footer text-center">
+ <button type="submit" class="btn btn-primary">
+ <i class="fas fa-check"></i> [[#{pruebas.ampliadas}]]
+ </button>
+ </div>
+ </div>
+ </form>
+ </div>
+ </div>
+ </section>
+ </body>
+</html>
