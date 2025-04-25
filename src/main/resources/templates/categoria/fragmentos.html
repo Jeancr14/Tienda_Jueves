@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:th="http://thymeleaf.org"
+      xmlns:sec="http://thymeleaf.org/thymeleaf-extras-springsecurity6">
+    <head th:replace="~{/layout/plantilla :: head}">
+        <title>Pruebas</title>
+        <meta charset="UTF-8"/> <!-- Alfabeto -->
+    </head>
+    <body>
+
+        <!-- 1 Sección donde se muestra el botón de agregar categorías-->
+
+        <section th:fragment="btnAgregar" class="py-4 mb-4 bg-light">
+            <div class="container">
+                <div class="row">
+                    <div class="col-md-3">
+                        <button type="button"
+                                sec:authorize="hasRole('ROLE_ADMIN')"
+                                class="btn btn-primary btn-block"
+                                data-bs-toggle="modal"
+                                data-bs-target="#agregarCategoria">
+                            <i class="fas fa-plus"></i> [[#{categoria.agregar}]]
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- 2 Sección donde se muestra la ventana modal de agregar categorias-->
+
+        <div th:fragment="agregarCategoria">
+            <div id="agregarCategoria"
+                 class="modal fade"
+                 tabindex="-1">
+                <div class="modal-dialog modal-md">
+                    <div class="modal-content">
+                        <div class="modal-header bg-info text-white">
+                            <h5 class="modal-title">[[#{categoria.agregar}]]</h5>
+                            <button type="button"
+                                    class="btn btn-close"
+                                    data-bs-dismiss="modal">
+                            </button>
+                        </div>
+                        <form th:action="@{/categoria/guardar}"
+                              th:object="${categoria}"
+                              method="post"
+                              class="was-validated"
+                              enctype="multipart/form-data">
+                            <div class="modal-body">
+                                <div class="mb-3">
+                                    <label>[[#{categoria.descripcion}]]</label>
+                                    <input type="text" class="form-control"
+                                           name="descripcion" required="true"/>
+                                </div>
+                                <div class="mb-3">
+                                    <label>[[#{categoria.activo}]]</label>
+                                    <input type="checkbox" class="form-check-input"
+                                           name="activo"/>
+                                </div>
+                                <div class="mb-3">
+                                    <label>[[#{categoria.rutaImagen}]]</label>
+                                    <input type="file" class="form-control"
+                                           onchange="readURL(this);"
+                                           name="imagenFile"/>
+                                    <img id="blah" src="#" alt="no data" height="200"/>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button class="btn btn-primary" type="submit">
+                                    <i class=""/> [[#{accion.guardar}]]
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>    
+        </div>
+
+        <!-- 3 Sección pricipal donde se muestra el listado categoria -->
+
+        <section th:fragment="listado">
+            <div class="container">
+                <div class="row"> <!-- Elementos se dividen en 12 columnas porque es un número con varias divisores, estas columnas se pueden fusionar etc -->
+                    <div class="col-md-9"> <!-- Bloque que ocupa las primeras 9 columnas -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h4>[[#{categoria.listado}]]</h4>
+                            </div>
+                            <div class="card-body">
+                                <table class="table">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th>#</th>
+                                            <th>[[#{categoria.descripcion}]]</th>
+                                            <th>[[#{categoria.rutaImagen}]]</th>
+                                            <th>[[#{categoria.activo}]]</th>
+                                            <th sec:authorize="hasRole('ROLE_ADMIN')">Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr th:each="c : ${categorias}">
+                                            <td>[[${c.idCategoria}]]</td>
+                                            <td>[[${c.descripcion}]]</td>
+                                            <td>
+                                                <img th:src="@{${c.rutaImagen}}"
+                                                     height="75"
+                                                     alt="No data"/>
+                                            </td>
+                                            <td>[[${c.activo}]]</td>
+                                            <td sec:authorize="hasRole('ROLE_ADMIN')">
+                                                <a th:href="@{/categoria/eliminar/}+${c.idCategoria}"
+                                                   class="btn btn-danger">
+                                                    <i class="fas fa-trash"></i>[[#{accion.eliminar}]]</a>
+                                                <a th:href="@{/categoria/modificar/}+${c.idCategoria}"
+                                                   class="btn btn-success">
+                                                    <i class="fas fa-pencil"></i>[[#{accion.actualizar}]]</a>
+
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div> 
+                </div>
+            </div>
+        </section>
+
+        <!-- 4 Sección para modificar una categoria-->
+
+        <section th:fragment="editarCategoria">
+            <div class="row">
+                <div class="col-md-2"></div>
+                <div class="col-md-8">
+                    <form th:action="@{/categoria/guardar}"
+                          th:object="${categoria}"
+                          method="post"
+                          class="was-validated"
+                          enctype="multipart/form-data">
+                        <input type="hidden" name="idCategoria" th:field="*{idCategoria}"/>  <!--información escondida -->
+                        <input type="hidden" name="rutaImagen" th:field="*{rutaImagen}"/>
+                        <div class="row py-4 mb-4 bg-light">
+                            <div class="col-md-4 d-grid">
+                                <a th:href="@{/categoria/listado}" class="btn btn-primary">
+                                    <i class="fas fa-arrow-left"></i>[[#{accion.regresar}]]
+                                </a>
+                            </div>
+                            <div class="col-md-4 d-grid">
+                                <a th:href="@{/categoria/eliminar/}+${categoria.idCategoria}" class="btn btn-danger">
+                                    <i class="fas fa-trash"></i>[[#{accion.eliminar}]]
+                                </a>
+                            </div>
+                            <div class="col-md-4 d-grid">
+                                <button type="submit" class="btn btn-success">
+                                    <i class="fas fa-check"></i>[[#{accion.guardar}]]
+                                </button>
+                            </div>
+
+                        </div>
+                        <div class="row">
+                            <div class="card">
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label>[[#{categoria.descripcion}]]</label>
+                                        <input type="text" class="form-control"
+                                               name="descripcion" th:field="*{descripcion}" required="true"/>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label>[[#{categoria.activo}]]</label>
+                                        <input type="checkbox" class="form-check-input"
+                                               name="activo" th:field="*{activo}"/>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label>[[#{categoria.rutaImagen}]]</label>
+                                        <input type="file" class="form-control"
+                                               onchange="readURL(this)";
+                                               name="imagenFile"/>
+                                        <img id="blah" src="#" alt="no data" height="200"/>
+                                    </div>
+                                </div>
+                            </div>
+                    </form>
+                </div>
+            </div>
+        </section>
+
+    </body>
+</html>
